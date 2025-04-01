@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 
 services:
   opendeepsearch:
@@ -10,7 +10,7 @@ services:
       - GRADIO_SERVER_NAME=0.0.0.0
       - SERPER_API_KEY=${SERPER_API_KEY}
       - JINA_API_KEY=${JINA_API_KEY}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
     volumes:
       - ./data:/app/data
     restart: unless-stopped
