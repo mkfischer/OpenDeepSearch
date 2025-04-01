@@ -1,0 +1,116 @@
+# OpenDeepSearch Containerization Plan
+
+## Overview
+This document outlines the steps to containerize the OpenDeepSearch application using Podman on macOS. This containerization will ensure consistent deployment across different environments.
+
+## Prerequisites
+- macOS with Podman installed
+- OpenDeepSearch codebase
+- Required API keys:
+  - SERPER_API_KEY (for search functionality)
+  - JINA_API_KEY or setup for Infinity Embeddings (for reranking)
+  - LLM provider API key (OPENAI_API_KEY, ANTHROPIC_API_KEY, etc.)
+
+## Step 1: Create a Dockerfile
+We've created a Dockerfile in the root directory with the following specifications:
+- Uses Python 3.10 slim as the base image
+- Installs all dependencies from requirements.txt
+- Sets up the application in development mode
+- Configures the Gradio server to listen on all interfaces
+- Exposes port 7860 for the Gradio interface
+
+## Step 2: Build the Container Image
+Use Podman to build the container image from the Dockerfile:
+```bash
+podman build -t opendeepsearch:latest .
+```
+
+## Step 3: Run the Container
+Launch the container with proper port mapping and environment variables:
+```bash
+podman run -p 7860:7860 \
+  -e SERPER_API_KEY="your-serper-api-key" \
+  -e JINA_API_KEY="your-jina-api-key" \
+  -e OPENAI_API_KEY="your-openai-api-key" \
+  opendeepsearch:latest
+```
+
+## Step 4: Test the Deployment
+Verify the application works correctly by accessing the Gradio interface at http://localhost:7860
+
+## Additional Considerations
+
+### Environment Variables
+For production deployment, consider using a more secure method for managing environment variables:
+```bash
+# Create an environment file
+cat > .env << EOL
+SERPER_API_KEY=your-serper-api-key
+JINA_API_KEY=your-jina-api-key
+OPENAI_API_KEY=your-openai-api-key
+EOL
+
+# Run with environment file
+podman run -p 7860:7860 --env-file=.env opendeepsearch:latest
+```
+
+### Self-hosted Reranking
+If using Infinity Embeddings for self-hosted reranking:
+```bash
+# Run the Infinity Embeddings server in a separate container
+podman run -d --name infinity-embeddings -p 7997:7997 \
+  michaelf/infinity:latest \
+  --model-name-or-path Alibaba-NLP/gte-Qwen2-7B-instruct
+
+# Connect OpenDeepSearch to the Infinity server
+podman run -p 7860:7860 \
+  -e SERPER_API_KEY="your-serper-api-key" \
+  -e OPENAI_API_KEY="your-openai-api-key" \
+  --link infinity-embeddings \
+  opendeepsearch:latest
+```
+
+### Resource Limits
+For production, set resource limits to prevent container from consuming excessive resources:
+```bash
+podman run -p 7860:7860 --memory="4g" --cpus="2.0" \
+  -e SERPER_API_KEY="your-serper-api-key" \
+  -e JINA_API_KEY="your-jina-api-key" \
+  -e OPENAI_API_KEY="your-openai-api-key" \
+  opendeepsearch:latest
+```
+
+### Persistent Storage
+If you need to save search results or other data:
+```bash
+podman run -p 7860:7860 \
+  -v ./data:/app/data \
+  -e SERPER_API_KEY="your-serper-api-key" \
+  -e JINA_API_KEY="your-jina-api-key" \
+  -e OPENAI_API_KEY="your-openai-api-key" \
+  opendeepsearch:latest
+```
+
+## Troubleshooting
+
+### Network Issues
+If the container can't access external APIs:
+```bash
+# Check network connectivity from inside the container
+podman exec opendeepsearch curl -I https://api.serper.dev
+```
+
+### Container Logs
+To view logs if the application isn't working:
+```bash
+podman logs opendeepsearch
+```
+
+### Interactive Debugging
+To get a shell inside the container:
+```bash
+podman exec -it opendeepsearch /bin/bash
+```
+
+## Conclusion
+Following this plan will create a containerized version of OpenDeepSearch that can be deployed consistently across different environments. The container includes all necessary dependencies and configuration to run the application with minimal setup.
