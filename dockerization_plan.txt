@@ -14,7 +14,8 @@ This document outlines the steps to containerize the OpenDeepSearch application 
 ## Step 1: Create a Dockerfile
 We've created a Dockerfile in the root directory with the following specifications:
 - Uses Python 3.10 slim as the base image
-- Installs all dependencies from requirements.txt
+- Installs git and other system dependencies needed for the build
+- Installs all Python dependencies from requirements.txt
 - Sets up the application in development mode
 - Configures the Gradio server to listen on all interfaces
 - Exposes port 7860 for the Gradio interface
@@ -28,7 +29,7 @@ podman build -t opendeepsearch:latest .
 ## Step 3: Run the Container
 Launch the container with proper port mapping and environment variables:
 ```bash
-podman run -p 7860:7860 \
+podman run -d --name opendeepsearch -p 7860:7860 \
   -e SERPER_API_KEY="your-serper-api-key" \
   -e JINA_API_KEY="your-jina-api-key" \
   -e OPENAI_API_KEY="your-openai-api-key" \
@@ -51,7 +52,7 @@ OPENAI_API_KEY=your-openai-api-key
 EOL
 
 # Run with environment file
-podman run -p 7860:7860 --env-file=.env opendeepsearch:latest
+podman run -d --name opendeepsearch -p 7860:7860 --env-file=.env opendeepsearch:latest
 ```
 
 ### Self-hosted Reranking
@@ -63,17 +64,17 @@ podman run -d --name infinity-embeddings -p 7997:7997 \
   --model-name-or-path Alibaba-NLP/gte-Qwen2-7B-instruct
 
 # Connect OpenDeepSearch to the Infinity server
-podman run -p 7860:7860 \
+podman run -d --name opendeepsearch -p 7860:7860 \
   -e SERPER_API_KEY="your-serper-api-key" \
   -e OPENAI_API_KEY="your-openai-api-key" \
-  --link infinity-embeddings \
+  --network=host \
   opendeepsearch:latest
 ```
 
 ### Resource Limits
 For production, set resource limits to prevent container from consuming excessive resources:
 ```bash
-podman run -p 7860:7860 --memory="4g" --cpus="2.0" \
+podman run -d --name opendeepsearch -p 7860:7860 --memory="4g" --cpus="2.0" \
   -e SERPER_API_KEY="your-serper-api-key" \
   -e JINA_API_KEY="your-jina-api-key" \
   -e OPENAI_API_KEY="your-openai-api-key" \
@@ -83,7 +84,7 @@ podman run -p 7860:7860 --memory="4g" --cpus="2.0" \
 ### Persistent Storage
 If you need to save search results or other data:
 ```bash
-podman run -p 7860:7860 \
+podman run -d --name opendeepsearch -p 7860:7860 \
   -v ./data:/app/data \
   -e SERPER_API_KEY="your-serper-api-key" \
   -e JINA_API_KEY="your-jina-api-key" \
@@ -111,6 +112,23 @@ To get a shell inside the container:
 ```bash
 podman exec -it opendeepsearch /bin/bash
 ```
+
+## Common Issues and Solutions
+
+### Git Not Found Error
+If you see an error about git not being found during the build process, make sure the Dockerfile includes the installation of git:
+```
+RUN apt-get update && apt-get install -y git
+```
+
+### Container Exiting Immediately
+If the container exits immediately after starting, check the logs to see what's happening:
+```bash
+podman logs opendeepsearch
+```
+
+### API Keys Not Being Recognized
+Make sure you're passing the environment variables correctly. Double-check the format of your run command or .env file.
 
 ## Conclusion
 Following this plan will create a containerized version of OpenDeepSearch that can be deployed consistently across different environments. The container includes all necessary dependencies and configuration to run the application with minimal setup.
