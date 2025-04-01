@@ -37,7 +37,7 @@ model = LiteLLMModel(
 agent = CodeAgent(tools=[search_tool], model=model)
 
 # Create a custom Gradio interface
-with gr.Blocks(title="OpenDeepSearch Demo") as demo:
+with gr.Blocks(title="OpenDeepSearch Demo", api_open=False) as demo:
     gr.Markdown("# OpenDeepSearch Demo")
     with gr.Row():
         with gr.Column():
